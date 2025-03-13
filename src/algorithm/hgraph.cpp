@@ -49,7 +49,8 @@ HGraph::HGraph(const HGraphParameter& hgraph_param, const vsag::IndexCommonParam
       labels_(common_param.allocator_.get()),
       use_reorder_(hgraph_param.use_reorder_),
       ef_construct_(hgraph_param.ef_construction_),
-      build_thread_count_(hgraph_param.build_thread_count_) {
+      build_thread_count_(hgraph_param.build_thread_count_),
+      extra_info_size_(hgraph_param->extra_info_param->extra_info_size {
     neighbors_mutex_ = std::make_shared<PointsMutex>(0, common_param.allocator_.get());
     this->basic_flatten_codes_ =
         FlattenInterface::MakeInstance(hgraph_param.base_codes_param_, common_param);
@@ -65,6 +66,10 @@ HGraph::HGraph(const HGraphParameter& hgraph_param, const vsag::IndexCommonParam
         this->build_pool_ = std::make_unique<progschj::ThreadPool>(this->build_thread_count_);
     }
     this->init_features();
+    if (extra_info_size_ > 0) {
+        this->extra_infos_ =
+            ExtraInfoInterface::MakeInstance(hgraph_param->extra_info_param, common_param);
+    }
 }
 
 tl::expected<std::vector<int64_t>, Error>
@@ -103,6 +108,10 @@ HGraph::Add(const DatasetPtr& data) {
                                                              data_ptr->GetNumElements());
             }
             this->hnsw_add(data_ptr);
+            if (this->extra_info_size_ > 0) {
+                this->extra_infos_->BatchInsertExtraInfo(data_ptr->GetExtraInfos(),
+                                                        data_ptr->GetNumElements());
+            }
         }
         return failed_ids;
     } catch (const std::invalid_argument& e) {
@@ -177,10 +186,19 @@ HGraph::KnnSearch(const DatasetPtr& query,
         dataset_results->Ids(ids);
         auto* dists = (float*)allocator_->Allocate(sizeof(float) * search_result.size());
         dataset_results->Distances(dists);
+        char* extra_infos = nullptr;
+        if (extra_info_size_ > 0) {
+            extra_infos = (char*)allocator_->Allocate(extra_info_size_ * search_result.size());
+            dataset_results->ExtraInfos(extra_infos);
+        }
 
         for (auto j = static_cast<int64_t>(search_result.size() - 1); j >= 0; --j) {
             dists[j] = search_result.top().first;
             ids[j] = this->labels_.at(search_result.top().second);
+            if (extra_infos != nullptr) {
+                this->extra_infos_->GetExtraInfoById(search_result.top().second,
+                                                    extra_infos + extra_info_size_ * j);
+            }
             search_result.pop();
         }
         return std::move(dataset_results);
@@ -218,6 +236,12 @@ HGraph::EstimateMemory(uint64_t num_elements) const {
     if (use_reorder_ && this->high_precise_codes_->InMemory()) {
         auto precise_memory = this->high_precise_codes_->code_size_ * element_count;
         estimate_memory += block_memory_ceil(precise_memory, block_size);
+    }
+
+    if (extra_info_size_ > 0 && this->extra_infos_ != nullptr && this->extra_infos_->InMemory()) {
+        auto extra_info_memory =
+            this->extra_infos_->ExtraInfoSize() * this->extra_infos_->TotalCount();
+        estimate_memory += block_memory_ceil(extra_info_memory, block_size);
     }
 
     auto label_map_memory =
@@ -508,10 +532,19 @@ HGraph::RangeSearch(const DatasetPtr& query,
         dataset_results->Ids(ids);
         auto* dists = (float*)allocator_->Allocate(sizeof(float) * search_result.size());
         dataset_results->Distances(dists);
+        char* extra_infos = nullptr;
+        if (extra_info_size_ > 0) {
+            extra_infos = (char*)allocator_->Allocate(extra_info_size_ * search_result.size());
+            dataset_results->ExtraInfos(extra_infos);
+        }
 
         for (auto j = static_cast<int64_t>(search_result.size() - 1); j >= 0; --j) {
             dists[j] = search_result.top().first;
             ids[j] = this->labels_.at(search_result.top().second);
+            if (extra_infos != nullptr) {
+                this->extra_infos_->GetExtraInfoById(search_result.top().second,
+                                                    extra_infos + extra_info_size_ * j);
+            }
             search_result.pop();
         }
         return std::move(dataset_results);
@@ -554,6 +587,9 @@ HGraph::Serialize(StreamWriter& writer) const {
     for (auto i = 0; i < this->max_level_; ++i) {
         this->route_graphs_[i]->Serialize(writer);
     }
+    if (this->extra_info_size_ > 0) {
+        this->extra_infos_->Serialize(writer);
+    }
 }
 
 void
@@ -574,6 +610,9 @@ HGraph::Deserialize(StreamReader& reader) {
     }
     this->neighbors_mutex_->Resize(max_capacity_);
     pool_ = std::make_shared<hnswlib::VisitedListPool>(max_capacity_, allocator_);
+    if (this->extra_info_size_ > 0) {
+        this->extra_infos_->Deserialize(reader);
+    }
 }
 
 void

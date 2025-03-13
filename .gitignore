@@ -187,3 +187,5 @@ data/
 /coverage-report/
 /coverage/
 *.gcov
+.ccls-cache/
+*.patch

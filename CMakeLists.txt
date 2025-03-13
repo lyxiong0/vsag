@@ -46,8 +46,8 @@ option (ENABLE_EXAMPLES "Whether compile examples" ON)
 option (ENABLE_TESTS "Whether compile vsag tests" ON)
 option (DISABLE_SSE_FORCE "Force disable sse and higher instructions" OFF)
 option (DISABLE_AVX_FORCE "Force disable avx and higher instructions" OFF)
-option (DISABLE_AVX2_FORCE "Force disable avx2 and higher instructions" OFF)
-option (DISABLE_AVX512_FORCE "Force disable avx512 instructions" OFF)
+option (DISABLE_AVX2_FORCE "Force disable avx2 and higher instructions" ON)
+option (DISABLE_AVX512_FORCE "Force disable avx512 instructions" ON)
 
 
 if (ENABLE_CXX11_ABI)

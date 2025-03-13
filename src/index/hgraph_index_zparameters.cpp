@@ -41,7 +41,14 @@ static const std::unordered_map<std::string, std::vector<std::string>> EXTERNAL_
     {HGRAPH_GRAPH_MAX_DEGREE, {HGRAPH_GRAPH_KEY, GRAPH_PARAM_MAX_DEGREE}},
     {HGRAPH_BUILD_EF_CONSTRUCTION, {BUILD_PARAMS_KEY, BUILD_EF_CONSTRUCTION}},
     {HGRAPH_INIT_CAPACITY, {HGRAPH_GRAPH_KEY, GRAPH_PARAM_INIT_MAX_CAPACITY}},
-    {HGRAPH_BUILD_THREAD_COUNT, {BUILD_PARAMS_KEY, BUILD_THREAD_COUNT}}};
+    {HGRAPH_BUILD_THREAD_COUNT, {BUILD_PARAMS_KEY, BUILD_THREAD_COUNT}},
+    {
+        HGRAPH_EXTRA_INFO_SIZE,
+        {
+            HGRAPH_EXTRA_INFO_KEY,
+            EXTRA_INFO_SIZE,
+        },
+    }};
 
 static const std::string HGRAPH_PARAMS_TEMPLATE =
     R"(
@@ -81,6 +88,13 @@ static const std::string HGRAPH_PARAMS_TEMPLATE =
         "{BUILD_PARAMS_KEY}": {
             "{BUILD_EF_CONSTRUCTION}": 400,
             "{BUILD_THREAD_COUNT}": 100
+        },
+        "{HGRAPH_EXTRA_INFO_KEY}": {
+            "{IO_PARAMS_KEY}": {
+                "{IO_TYPE_KEY}": "{IO_TYPE_VALUE_BLOCK_MEMORY_IO}",
+                "{IO_FILE_PATH}": "{DEFAULT_FILE_PATH_VALUE}"
+            },
+            "{EXTRA_INFO_SIZE}": 0
         }
     })";
 
