@@ -109,7 +109,7 @@ HGraph::Add(const DatasetPtr& data) {
                                                          data_ptr->GetNumElements());
         }
         this->hnsw_add(data_ptr);
-        const auto *data_extra_info = data->GetExtraInfos();
+        const auto* data_extra_info = data->GetExtraInfos();
         if (this->extra_info_size_ > 0 && data_extra_info != nullptr) {
             this->extra_infos_->BatchInsertExtraInfo(data_ptr->GetExtraInfos(),
                                                      data_ptr->GetNumElements());
